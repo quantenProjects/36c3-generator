@@ -1156,3 +1156,30 @@ function downloadPNG(){
     document.body.removeChild(downloadLink);
 	crackPoint.insertAbove(concreteObjects[concreteObjects.length-1]);
 }
+
+function create_xy_paths() {
+	var paths = [];
+	for (const path of project.activeLayer.children) {
+		var xy_path = [];
+		for ( var offset= 0; offset < path.length; offset++) {
+			var point = path.getLocationAt(offset).point;
+			xy_path.push([point.x,point.y]);
+		}
+		paths.push(xy_path)
+	}
+	return paths;
+}
+
+function print_xy() {
+	const canvas = document.getElementById('xyCanvas');
+	const ctx = canvas.getContext('2d');
+	data = create_xy_paths();
+	ctx.beginPath();
+	ctx.strokeStyle = 'orange';
+	for (const path of data) {
+		for (const point of path) {
+			ctx.lineTo(Math.floor(point[0])/10+50,Math.floor(point[1])/10+50);
+		}
+	}
+	ctx.stroke();
+}
