@@ -1157,75 +1157,89 @@ function downloadPNG(){
 	crackPoint.insertAbove(concreteObjects[concreteObjects.length-1]);
 }
 
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+var source = null;
+
+
 function create_xy_paths(samplecount) {
-    var sum_path_length = 0;
+    console.log("samples: " + samplecount);
+    let sum_path_length = 0;
     for (const path of project.activeLayer.children) {
         sum_path_length += path.length
     }
     x_path = [];
     y_path = [];
-    var offset_val = sum_path_length / samplecount;
+    let offset_val = sum_path_length / samplecount;
     console.log("offsetval:" + offset_val);
-    var xmax = project.activeLayer.children[0].getLocationAt(0).point.x;
-    var xmin = xmax;
-    var ymax = project.activeLayer.children[0].getLocationAt(0).point.y;
-    var ymin = ymax;
-	for (const path of project.activeLayer.children) {
-		for ( var offset= 0; offset < path.length; offset+= offset_val) {
-			var point = path.getLocationAt(offset).point;
+    let xmax = project.activeLayer.children[0].getLocationAt(0).point.x;
+    let xmin = xmax;
+    let ymax = project.activeLayer.children[0].getLocationAt(0).point.y;
+    let ymin = ymax;
+    for (const path of project.activeLayer.children) {
+        for (let offset = 0; offset < path.length; offset += offset_val) {
+            const point = path.getLocationAt(offset).point;
             if (point.x > xmax) xmax = point.x;
             if (point.y > ymax) ymax = point.y;
             if (point.x < xmin) xmin = point.x;
             if (point.y < ymin) ymin = point.y;
             x_path.push(point.x);
             y_path.push(point.y);
-		}
-	}
-	console.log("calculated points");
-	var xrange = (xmax-xmin)/2;
-    var yrange = (ymax-ymin)/2;
+        }
+    }
+    console.log("calculated points");
+    const xrange = (xmax - xmin) / 2;
+    const yrange = (ymax - ymin) / 2;
+    const scale = Math.max(xrange, yrange);
     console.log("x" + xmax + " " + xmin + " " + xrange);
     console.log("y" + ymax + " " + ymin + " " + yrange);
-	for (var i = 0; i < x_path.length; i++) {
-        x_path[i] = (x_path[i]-xmin-xrange)/xrange;
-        y_path[i] = (y_path[i]-ymin-yrange)/yrange;
+    for (let i = 0; i < x_path.length; i++) {
+        x_path[i] = (x_path[i] - xmin - xrange) / scale;
+        y_path[i] = (y_path[i] - ymin - yrange) / scale;
     }
     console.log("normalizzed");
-	return [x_path,y_path];
+    return [x_path, y_path];
 }
 
+function update_sound_buffer() {
+    const samples = audioCtx.sampleRate / 50;
+    const myArrayBuffer = audioCtx.createBuffer(2, samples, audioCtx.sampleRate);
 
-function play_sound() {
-    var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-    var samples = audioCtx.sampleRate/50;
-    console.log("samples: " + samples);
-    // Create an empty three-second stereo buffer at the sample rate of the AudioContext
-    var myArrayBuffer = audioCtx.createBuffer(2, samples, audioCtx.sampleRate);
-
-    var path_data = create_xy_paths(samples);
+    const path_data = create_xy_paths(samples);
     console.log("got path data");
-    var x_path = path_data[0];
-    var y_path = path_data[1];
+    const x_path = path_data[0];
+    const y_path = path_data[1];
 
-    var x_data = myArrayBuffer.getChannelData(0);
-    var y_data = myArrayBuffer.getChannelData(1);
-    for (var i = 0; i < y_data.length; i++) {
+    let x_data = myArrayBuffer.getChannelData(0);
+    let y_data = myArrayBuffer.getChannelData(1);
+    for (let i = 0; i < y_data.length; i++) {
         //x_data[i] = ((i % 512) - 256) / 256;
         //y_data[i] = Math.sin(i/64*3.1415);
         x_data[i] = x_path[i];
         y_data[i] = y_path[i];
     }
 
-    console.log("start playing");
-    var source = audioCtx.createBufferSource();
-    // set the buffer in the AudioBufferSourceNode
     source.buffer = myArrayBuffer;
-    // connect the AudioBufferSourceNode to the
-    // destination so we can hear the sound
+    console.log("buffer updated");
+}
+
+function play_sound() {
+    source = audioCtx.createBufferSource();
     source.connect(audioCtx.destination);
     source.loop = true;
-    // start the source playing
+    update_sound_buffer();
     source.start();
+}
 
+function stop_sound() {
+    source.stop();
+}
+
+function play_button() {
+    if (document.getElementById("playButton").innerText === "Play Sound") {
+        play_sound();
+        document.getElementById("playButton").innerText = "Stop Sound";
+    } else {
+        stop_sound();
+        document.getElementById("playButton").innerText = "Play Sound";
+    }
 }
