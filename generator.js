@@ -1159,67 +1159,61 @@ function downloadPNG(){
 
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 var source = null;
+var timeoutID = null;
 
 
 function create_xy_paths(samplecount) {
-    console.log("samples: " + samplecount);
     let sum_path_length = 0;
     for (const path of project.activeLayer.children) {
         sum_path_length += path.length
     }
-    x_path = [];
-    y_path = [];
+    x_path = new Float32Array(samplecount);
+    y_path = new Float32Array(samplecount);
     let offset_val = sum_path_length / samplecount;
-    console.log("offsetval:" + offset_val);
-    let xmax = project.activeLayer.children[0].getLocationAt(0).point.x;
-    let xmin = xmax;
-    let ymax = project.activeLayer.children[0].getLocationAt(0).point.y;
-    let ymin = ymax;
-    for (const path of project.activeLayer.children) {
-        for (let offset = 0; offset < path.length; offset += offset_val) {
-            const point = path.getLocationAt(offset).point;
-            if (point.x > xmax) xmax = point.x;
-            if (point.y > ymax) ymax = point.y;
-            if (point.x < xmin) xmin = point.x;
-            if (point.y < ymin) ymin = point.y;
-            x_path.push(point.x);
-            y_path.push(point.y);
-        }
-    }
-    console.log("calculated points");
+    let xs = [];
+    let ys = [];
+	for (const path of project.activeLayer.children) {
+		const bounds = path.bounds;
+		xs.push(bounds.x);
+		xs.push(bounds.x + bounds.width);
+		ys.push(bounds.y);
+		ys.push(bounds.y + bounds.height);
+	}
+	let xmax = Math.max(...xs);
+	let xmin = Math.min(...xs);
+	let ymax = Math.max(...ys);
+	let ymin = Math.min(...ys);
     const xrange = (xmax - xmin) / 2;
     const yrange = (ymax - ymin) / 2;
     const scale = Math.max(xrange, yrange);
-    console.log("x" + xmax + " " + xmin + " " + xrange);
-    console.log("y" + ymax + " " + ymin + " " + yrange);
-    for (let i = 0; i < x_path.length; i++) {
-        x_path[i] = (x_path[i] - xmin - xrange) / scale;
-        y_path[i] = (y_path[i] - ymin - yrange) / scale;
-    }
-    console.log("normalizzed");
+    let i = 0;
+	for (const path of project.activeLayer.children) {
+		let subpaths = [];
+		if (path._class === "CompoundPath") {
+			subpaths.concat(path.curves);
+		} else {
+			subpaths.push(path)
+		}
+		for (const sub_path of subpaths) {
+			for (let offset = 0; offset < path.length; offset += offset_val) {
+				const point = path.getLocationAt(offset).point;
+				x_path[i] = (point.x - xmin - xrange) / scale;
+				y_path[i] = (point.y - ymin - yrange) / scale;
+				i++;
+			}
+		}
+	}
     return [x_path, y_path];
 }
 
 function update_sound_buffer() {
-    const samples = audioCtx.sampleRate / 50;
+    const samples = audioCtx.sampleRate / 20;
     const myArrayBuffer = audioCtx.createBuffer(2, samples, audioCtx.sampleRate);
-
     const path_data = create_xy_paths(samples);
-    console.log("got path data");
-    const x_path = path_data[0];
-    const y_path = path_data[1];
-
-    let x_data = myArrayBuffer.getChannelData(0);
-    let y_data = myArrayBuffer.getChannelData(1);
-    for (let i = 0; i < y_data.length; i++) {
-        //x_data[i] = ((i % 512) - 256) / 256;
-        //y_data[i] = Math.sin(i/64*3.1415);
-        x_data[i] = x_path[i];
-        y_data[i] = y_path[i];
-    }
-
+    myArrayBuffer.copyToChannel(path_data[0],0);
+	myArrayBuffer.copyToChannel(path_data[1],1);
     source.buffer = myArrayBuffer;
-    console.log("buffer updated");
+	timeoutID = window.setTimeout(update_sound_buffer, 50);
 }
 
 function play_sound() {
@@ -1231,6 +1225,9 @@ function play_sound() {
 }
 
 function stop_sound() {
+	if (timeoutID !== null) {
+		window.clearTimeout(timeoutID);
+	}
     source.stop();
 }
 
