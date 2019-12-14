@@ -1161,6 +1161,9 @@ const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 var source = null;
 var timeoutID = null;
 
+var x_factor = 1;
+var y_factor = 1;
+var audio_refresh_rate = 40;
 
 function create_xy_paths(samplecount) {
     let sum_path_length = 0;
@@ -1185,7 +1188,8 @@ function create_xy_paths(samplecount) {
 	let ymin = Math.min(...ys);
     const xrange = (xmax - xmin) / 2;
     const yrange = (ymax - ymin) / 2;
-    const scale = Math.max(xrange, yrange);
+    const xscale = Math.max(xrange, yrange) * x_factor;
+    const yscale = Math.max(xrange, yrange) * y_factor;
     let i = 0;
 	for (const path of project.activeLayer.children) {
 		let subpaths = [];
@@ -1197,8 +1201,8 @@ function create_xy_paths(samplecount) {
 		for (const sub_path of subpaths) {
 			for (let offset = 0; offset < path.length; offset += offset_val) {
 				const point = path.getLocationAt(offset).point;
-				x_path[i] = (point.x - xmin - xrange) / scale;
-				y_path[i] = (point.y - ymin - yrange) / scale;
+				x_path[i] = (point.x - xmin - xrange) / xscale;
+				y_path[i] = (point.y - ymin - yrange) / yscale;
 				i++;
 			}
 		}
@@ -1207,7 +1211,7 @@ function create_xy_paths(samplecount) {
 }
 
 function update_sound_buffer() {
-    const samples = audioCtx.sampleRate / 20;
+    const samples = audioCtx.sampleRate / audio_refresh_rate;
     const myArrayBuffer = audioCtx.createBuffer(2, samples, audioCtx.sampleRate);
     const path_data = create_xy_paths(samples);
     myArrayBuffer.copyToChannel(path_data[0],0);
