@@ -1207,47 +1207,88 @@ var x_factor = 1;
 var y_factor = 1;
 var audio_refresh_rate = 40;
 
+var area_threshold_for_audio_output = 100;
+var size_threshold_for_audio_output = 15;
+
+var debug_bounding_boxes = false;
+
 function create_xy_paths(samplecount) {
+    //delete all debugObjects
+    const debugPathsToDelete = project.activeLayer.children.filter(path => path.data.isDebugObject === true);
+    for (const path of debugPathsToDelete) {
+        path.remove();
+    }
+
+	// Paint all Paths that have a strokeColor and a non zero length (this should only apply to the hope leaves)
+	// or that are big enough to be relevant
+	const pathsToPaint = project.activeLayer.children.filter(path => (path.strokeColor != null  && path.length > 0 ||
+		(path.area > area_threshold_for_audio_output &&
+			Math.max(path.bounds.size.width, path.bounds.size.height) > size_threshold_for_audio_output)) &&
+		path.data.isDebugObject !== true);
+
+	// Sum all length to calc the offset_val
     let sum_path_length = 0;
-    for (const path of project.activeLayer.children) {
+    for (const path of pathsToPaint) {
         sum_path_length += path.length
     }
     x_path = new Float32Array(samplecount);
     y_path = new Float32Array(samplecount);
     let offset_val = sum_path_length / samplecount;
-    let xs = [];
-    let ys = [];
-	for (const path of project.activeLayer.children) {
+    let topLeftPointBounds = null;
+    let bottomRightPointBounds = null;
+
+
+    // get bounds of all paths
+	for (const path of pathsToPaint) {
 		const bounds = path.bounds;
-		xs.push(bounds.x);
-		xs.push(bounds.x + bounds.width);
-		ys.push(bounds.y);
-		ys.push(bounds.y + bounds.height);
+		if (debug_bounding_boxes) {
+			const rect = new Path.Rectangle(bounds);
+			rect.strokeColor = "#999999";
+			rect.strokeWidth = 2;
+			rect.fillColor = new Color(0.5, 0, 0, 0.1);
+			rect.data.isDebugObject = true;
+			project.activeLayer.addChild(rect);
+		}
+
+		if (topLeftPointBounds == null) // null is at 0,0
+			topLeftPointBounds = path.bounds.topLeft;
+		else
+			topLeftPointBounds = Point.min(path.bounds.topLeft, topLeftPointBounds);
+
+		bottomRightPointBounds = Point.max(path.bounds.bottomRight, bottomRightPointBounds);
 	}
-	let xmax = Math.max(...xs);
-	let xmin = Math.min(...xs);
-	let ymax = Math.max(...ys);
-	let ymin = Math.min(...ys);
-    const xrange = (xmax - xmin) / 2;
-    const yrange = (ymax - ymin) / 2;
+	if (debug_bounding_boxes) {
+        const rect = new Path.Rectangle(topLeftPointBounds, bottomRightPointBounds);
+        rect.strokeColor = "blue";
+        rect.strokeWidth = 4;
+        rect.fillColor = new Color(0,0,0.5,0.3);
+        rect.data.isDebugObject = true;
+        project.activeLayer.addChild(rect);
+	}
+	const boundsSize = new Size(bottomRightPointBounds.subtract(topLeftPointBounds));
+
+    const xrange = boundsSize.width / 2;
+    const yrange = boundsSize.height / 2;
     const xscale = Math.max(xrange, yrange) * x_factor;
     const yscale = Math.max(xrange, yrange) * y_factor;
     let i = 0;
-	for (const path of project.activeLayer.children) {
-		let subpaths = [];
-		if (path._class === "CompoundPath") {
-			subpaths.concat(path.curves);
-		} else {
-			subpaths.push(path)
-		}
-		for (const sub_path of subpaths) {
-			for (let offset = 0; offset < path.length; offset += offset_val) {
-				const point = path.getLocationAt(offset).point;
-				x_path[i] = (point.x - xmin - xrange) / xscale;
-				y_path[i] = (point.y - ymin - yrange) / yscale;
-				i++;
-			}
-		}
+	for (const path of pathsToPaint) {
+        if (path.data.isDebugObject !== true) {
+            let subpaths = [];
+            if (path._class === "CompoundPath") {
+                subpaths.concat(path.curves);
+            } else {
+                subpaths.push(path)
+            }
+            for (const sub_path of subpaths) {
+                for (let offset = 0; offset < path.length; offset += offset_val) {
+                    const point = path.getLocationAt(offset).point;
+                    x_path[i] = (point.x - topLeftPointBounds.x - xrange) / xscale;
+                    y_path[i] = (point.y - topLeftPointBounds.y - yrange) / yscale;
+                    i++;
+                }
+            }
+        }
 	}
     return [x_path, y_path];
 }
