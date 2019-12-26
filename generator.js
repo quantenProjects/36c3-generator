@@ -46,6 +46,7 @@ var captionText = [];
 var simText = "36c3";
 var simSVG = "";
 var animation = false;
+var moveCaption = false;
 
 //RNG
 var state = new StateSaver();
@@ -81,6 +82,7 @@ var span;
 
 window.onload = function() {
 	paper.setup('paperCanvas');
+
 	if(animation){
 		var menue = document.getElementsByClassName("menue")[0];
 		menue.style.display = "none";
@@ -95,6 +97,8 @@ window.onload = function() {
 
 	// Get the <span> element that closes the modal
 	span = document.getElementsByClassName("close")[0];
+
+	//moveCaptionButton = document.getElementById("moveCaption");
 
 	// When the user clicks on <span> (x), close the modal
 	span.onclick = function() {
@@ -130,15 +134,24 @@ window.onload = function() {
 
 	//Mouse events for adding cracks
 	view.onMouseDown = function(event) {
-		if(crackPoint){
-			mousepos = event.point;
+		mousepos = event.point;
 
-			if(!simulationRunning){
-				handleCrack(true, mousepos);
-
-			}
-
+		if(simulationRunning){
+			return;
 		}
+		
+		captionObjects.forEach(function(capObj){
+			if(capObj.contains(mousepos)){
+				moveCaption = true;
+			}
+		});
+
+		if(crackPoint && !moveCaption){
+			handleCrack(true, mousepos);
+			return;
+		}
+		
+		
 	}
 
 	//update red position dot when mouse is moved
@@ -156,13 +169,30 @@ window.onload = function() {
 			}
 		}
 	}
+	view.onMouseUp = function(event){
+		moveCaption = false;
+	}
+
 
 
 
 	setAnimationFunction();
 }
 
-//apply physics engine simulation to paper.js animation 
+/*function toggleMoveCaption(){
+	moveCaption = !moveCaption;
+	if(moveCaption){
+		moveCaptionButton.className = 'moveEnabled';
+		document.getElementById("four").classList.add("disabled");
+		document.getElementById("five").classList.add("disabled");
+	} else{
+		moveCaptionButton.className = 'moveDisabled';
+		document.getElementById("four").classList.remove("disabled");
+		document.getElementById("five").classList.remove("disabled");
+	}
+}*/
+
+//apply physics engine simulation to paper.js animation
 function setAnimationFunction(view){
 	paper.view.onFrame = function(event){
 
@@ -340,6 +370,12 @@ function setCaption(isNew){
 				}
 				shape.bounds.topRight.x = leftbound.point.x;
 				shape.rotate(state.rnd(0,10)-5);
+				shape.onMouseDrag = function(event)  {
+					if(moveCaption){
+					event.target.bounds.topRight.x = event.target.bounds.topRight.x + event.delta.x;
+					event.target.bounds.topRight.y = event.target.bounds.topRight.y + event.delta.y;
+					}
+				}
 				captionObjects.push(shape);
 			});
 		});
@@ -419,6 +455,7 @@ function clearSimulation(){
 	Matter.Engine.clear(this.engine);
 
 	simulationRunning = true;
+	moveCaption = false;
 
 	var ground = Bodies.rectangle(-100, groundheight, 6400, 60, { isStatic: true });
 	ground.frictionStatic = staticFriction;
@@ -465,6 +502,7 @@ function simulateText(text, finializeFunc){
 			var boundingbox = new Rectangle([boundingboxData.x1, boundingboxData.y1], [boundingboxData.x2-boundingboxData.x1, boundingboxData.y2-boundingboxData.y1]);
 			var paperpath = paper.project.importSVG(fontpaths[i].toSVG());
 			paperpath.fillColor = '#DCDCDC';
+
 			if(i==0){
 				console.log(paper.view.bounds.x);
 				console.log(boundingbox.bottomLeft.x);
@@ -497,9 +535,9 @@ function simulateSVG(svgstring, finializeFunc){
 	mousepos = [100,100];
 	crackPoint = new Path.Circle([100,100],5);
 	crackPoint.fillColor = textColor;
-	
+
 	var svg = paper.project.importSVG(svgstring,{onLoad: svg => {handleSVG(svg); finializeFunc();}, onError: svgError, insert: true} );
-	
+
 	crackPoint.bringToFront();
 }
 
@@ -1135,6 +1173,7 @@ function animationBoxes(){
 	document.getElementById("three").classList.add("disabled");
 	document.getElementById("four").classList.add("disabled");
 	document.getElementById("five").classList.add("disabled");
+	document.getElementById("six").classList.add("disabled");
 }
 
 //enable second phase boxed
@@ -1142,7 +1181,7 @@ function enableBoxes(){
 	document.getElementById("three").classList.remove("disabled");
 	document.getElementById("four").classList.remove("disabled");
 	document.getElementById("five").classList.remove("disabled");
-
+	document.getElementById("six").classList.remove("disabled");
 	document.getElementById("two").classList.add("disabled");
 
 	document.getElementById("one").classList.remove("disabled");
@@ -1153,13 +1192,13 @@ function disableBoxes(){
 	document.getElementById("three").classList.add("disabled");
 	document.getElementById("four").classList.add("disabled");
 	document.getElementById("five").classList.add("disabled");
-
+	document.getElementById("six").classList.add("disabled");
 	document.getElementById("two").classList.remove("disabled");
 
 	document.getElementById("one").classList.remove("disabled");
 }
 
-//disable share button 
+//disable share button
 function disableShare(){
 	document.getElementById("shareButton").classList.add("disabled");
 }
@@ -1173,7 +1212,7 @@ function enableShare(){
 function downloadSVG(){
 	crackPoint.remove();
 	paper.view.update();
-    var svg = project.exportSVG({ asString: true, bounds: 'content' });    
+    var svg = project.exportSVG({ asString: true, bounds: 'content' });
     var svgBlob = new Blob([svg], {type:"image/svg+xml;charset=utf-8"});
     var svgUrl = URL.createObjectURL(svgBlob);
     var downloadLink = document.createElement("a");
