@@ -1244,6 +1244,7 @@ var timeoutID = null;
 
 var x_factor = 1;
 var y_factor = 1;
+var channel_flip = false;
 var audio_refresh_rate = 40;
 
 var area_threshold_for_audio_output = 100;
@@ -1338,8 +1339,13 @@ function update_sound_buffer() {
     const samples = audioCtx.sampleRate / audio_refresh_rate;
     const myArrayBuffer = audioCtx.createBuffer(2, samples, audioCtx.sampleRate);
     const path_data = create_xy_paths(samples);
+	if (channel_flip) {
+    myArrayBuffer.copyToChannel(path_data[0],1);
+	myArrayBuffer.copyToChannel(path_data[1],0);
+	} else {
     myArrayBuffer.copyToChannel(path_data[0],0);
 	myArrayBuffer.copyToChannel(path_data[1],1);
+	}
     source.buffer = myArrayBuffer;
 	timeoutID = window.setTimeout(update_sound_buffer, 50);
 }
@@ -1360,11 +1366,21 @@ function stop_sound() {
 }
 
 function play_button() {
-    if (document.getElementById("playButton").innerText === "Play Sound") {
+    if (document.getElementById("playButton").innerText === "Play") {
         play_sound();
-        document.getElementById("playButton").innerText = "Stop Sound";
+        document.getElementById("playButton").innerText = "Stop";
     } else {
         stop_sound();
-        document.getElementById("playButton").innerText = "Play Sound";
+        document.getElementById("playButton").innerText = "Play";
     }
+}
+
+function flip_audio(action) {
+	if (action === "x") {
+		x_factor *= -1;
+	} else if (action === "y") {
+		y_factor *= -1;
+	} else if (action === "c") {
+		channel_flip = ! channel_flip;
+	}
 }

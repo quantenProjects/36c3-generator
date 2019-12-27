@@ -29,7 +29,11 @@
 	</div>
 	<div class="zoom">
 		<button onclick="zoomIn()">+</button></br></br>
-		<button onclick="zoomOut()">-</button>
+		<button onclick="zoomOut()">-</button><br><br>
+		<button onclick="play_button();" id="playButton">Play</button><br><br>
+		<button onclick="flip_audio('x');">X</button><br><br>
+		<button onclick="flip_audio('y');">Y</button><br><br>
+		<button onclick="flip_audio('c');">X/Y</button>
 	</div>
 	<div class="menue">
 		<div class="stage orange" id="one">
@@ -83,7 +87,6 @@
 				<button onclick="downloadPNG()">save PNG</button>
 				<button onclick="downloadSVG()">save SVG</button>
 				<button onclick="share()" id="shareButton">share</button>
-				<button onclick="play_button()" id="playButton">Play Sound</button>
 			</div>
 		</div>
     </div>
