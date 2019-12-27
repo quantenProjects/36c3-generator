@@ -1296,6 +1296,8 @@ function create_xy_paths(samplecount) {
 
 		bottomRightPointBounds = Point.max(path.bounds.bottomRight, bottomRightPointBounds);
 	}
+	if (topLeftPointBounds == null) topLeftPointBounds = new Point(0,0);
+	if (bottomRightPointBounds == null) bottomRightPointBounds = new Point(0,0);
 	if (debug_bounding_boxes) {
         const rect = new Path.Rectangle(topLeftPointBounds, bottomRightPointBounds);
         rect.strokeColor = "blue";
